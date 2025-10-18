@@ -113,7 +113,7 @@ def process_loaded_project_config(
         typer.secho(
             "Project configuration could not be loaded.\n"
             "pyproject.toml is invalid:\n"
-            + "\n".join([f"- {line}" for line in errors]),
+            + ("\n- " + "\n- ".join(errors) if errors else ""),
             fg=typer.colors.RED,
             bold=True,
         )
@@ -122,7 +122,7 @@ def process_loaded_project_config(
     if warnings:
         typer.secho(
             "Project configuration is missing the following "
-            "recommended properties:\n" + "\n".join([f"- {line}" for line in warnings]),
+            "recommended properties:\n- " + "\n- ".join(warnings),
             fg=typer.colors.RED,
             bold=True,
         )
