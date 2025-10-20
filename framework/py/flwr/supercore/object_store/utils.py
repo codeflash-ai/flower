@@ -27,17 +27,16 @@ def store_mapping_and_register_objects(
     store: ObjectStore, request: Union[PushAppMessagesRequest, PushMessagesRequest]
 ) -> set[str]:
     """Store Message object to descendants mapping and preregister objects."""
-    if not request.messages_list:
+    messages_list = request.messages_list
+    if not messages_list:
         return set()
     objects_to_push: set[str] = set()
-    # Get run_id from the first message in the list
-    # All messages of a request should in the same run
-    run_id = request.messages_list[0].metadata.run_id
+    run_id = messages_list[0].metadata.run_id
+    preregister = store.preregister
+    message_object_trees = request.message_object_trees
 
-    for object_tree in request.message_object_trees:
-        # Preregister
-        unavailable_obj_ids = store.preregister(run_id, object_tree)
-        # Keep track of objects that need to be pushed
-        objects_to_push |= set(unavailable_obj_ids)
+    for object_tree in message_object_trees:
+        unavailable_obj_ids = preregister(run_id, object_tree)
+        objects_to_push.update(unavailable_obj_ids)
 
     return objects_to_push
