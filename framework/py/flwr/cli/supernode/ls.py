@@ -181,16 +181,19 @@ def _format_nodes(
 
 def _to_table(nodes_info: list[_NodeListType], verbose: bool) -> Table:
     """Format the provided node list to a rich Table."""
+
     table = Table(header_style="bold cyan", show_lines=True)
 
     # Add columns
-    table.add_column(
-        Text("Node ID", justify="center"), style="bright_white", no_wrap=True
-    )
-    table.add_column(Text("Owner", justify="center"), style="dim white")
-    table.add_column(Text("Status", justify="center"))
-    table.add_column(Text("Elapsed", justify="center"))
-    table.add_column(Text("Status Changed @", justify="center"), style="dim white")
+    add_column = table.add_column
+    add_column(Text("Node ID", justify="center"), style="bright_white", no_wrap=True)
+    add_column(Text("Owner", justify="center"), style="dim white")
+    add_column(Text("Status", justify="center"))
+    add_column(Text("Elapsed", justify="center"))
+    add_column(Text("Status Changed @", justify="center"), style="dim white")
+
+    # Prebind commonly used methods and values for minor speedup in loop
+    table_add_row = table.add_row
 
     for row in nodes_info:
         (
@@ -204,31 +207,36 @@ def _to_table(nodes_info: list[_NodeListType], verbose: bool) -> Table:
             elapse_activated,
         ) = row
 
+        # Fast lookup for status
         if status == "online":
             status_style = "green"
             time_at = last_activated_at
+            elapsed_text = f"[cyan]{elapse_activated}[/cyan]"
         elif status == "offline":
             status_style = "bright_yellow"
             time_at = last_deactivated_at
+            elapsed_text = ""
         elif status == "deleted":
             if not verbose:
                 continue
             status_style = "red"
             time_at = deleted_at
+            elapsed_text = ""
         elif status == "created":
             status_style = "blue"
             time_at = "N/A"
+            elapsed_text = ""
         else:
             raise ValueError(f"Unexpected node status '{status}'")
 
-        formatted_row = (
+        # Avoid building tuple just to immediately unpack it
+        table_add_row(
             f"[bold]{node_id}[/bold]",
             f"{owner_aid}",
             f"[{status_style}]{status}",
-            f"[cyan]{elapse_activated}[/cyan]" if status == "online" else "",
+            elapsed_text,
             time_at,
         )
-        table.add_row(*formatted_row)
 
     return table
 
