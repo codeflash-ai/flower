@@ -36,6 +36,8 @@ except ImportError:
 def get_control_authn_plugins() -> dict[str, type[ControlAuthnPlugin]]:
     """Return all Control API authentication plugins."""
     ee_dict: dict[str, type[ControlAuthnPlugin]] = get_control_authn_ee_plugins()
+    if not ee_dict:
+        return {AuthnType.NOOP: NoOpControlAuthnPlugin}
     return ee_dict | {AuthnType.NOOP: NoOpControlAuthnPlugin}
 
 
