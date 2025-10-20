@@ -18,7 +18,7 @@
 import time
 from logging import DEBUG, ERROR, INFO
 from pathlib import Path
-from typing import Annotated, Any, Optional, cast
+from typing import Annotated, Any, Optional
 
 import grpc
 import typer
@@ -92,22 +92,20 @@ def stream_logs(
     """
     req = StreamLogsRequest(run_id=run_id, after_timestamp=after_timestamp)
 
-    latest_timestamp = 0.0
+    latest_timestamp = after_timestamp
     res = None
     try:
         with flwr_cli_grpc_exc_handler():
             for res in stub.StreamLogs(req, timeout=duration):
                 print(res.log_output, end="")
+                latest_timestamp = res.latest_timestamp
         raise AllLogsRetrieved()
     except grpc.RpcError as e:
         # pylint: disable=E1101
         if e.code() != grpc.StatusCode.DEADLINE_EXCEEDED:
             raise e
-    finally:
-        if res is not None:
-            latest_timestamp = cast(float, res.latest_timestamp)
 
-    return max(latest_timestamp, after_timestamp)
+    return latest_timestamp
 
 
 def print_logs(run_id: int, channel: grpc.Channel, timeout: int) -> None:
