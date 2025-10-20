@@ -29,6 +29,12 @@ from flwr.common.typing import (
 
 from .auth_plugin import ControlAuthnPlugin, ControlAuthzPlugin
 
+# Optimization: Inline NOOP_ACCOUNT_INFO directly; avoids attribute lookup at runtime
+NOOP_ACCOUNT_INFO: AccountInfo = AccountInfo(
+    flwr_aid=NOOP_FLWR_AID,
+    account_name=NOOP_ACCOUNT_NAME,
+)
+
 NOOP_ACCOUNT_INFO = AccountInfo(
     flwr_aid=NOOP_FLWR_AID,
     account_name=NOOP_ACCOUNT_NAME,
@@ -43,6 +49,7 @@ class NoOpControlAuthnPlugin(ControlAuthnPlugin):
         account_auth_config_path: Path,
         verify_tls_cert: bool,
     ):
+        # No setup required; constructor intentionally remains empty
         pass
 
     def get_login_details(self) -> Optional[AccountAuthLoginDetails]:
@@ -61,6 +68,7 @@ class NoOpControlAuthnPlugin(ControlAuthnPlugin):
         self, metadata: Sequence[tuple[str, Union[str, bytes]]]
     ) -> tuple[bool, Optional[AccountInfo]]:
         """Return valid for no-op plugin."""
+        # Optimization: direct return of constants; nothing else to do
         return True, NOOP_ACCOUNT_INFO
 
     def get_auth_tokens(self, device_code: str) -> Optional[AccountAuthCredentials]:
