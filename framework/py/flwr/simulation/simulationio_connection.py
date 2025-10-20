@@ -81,10 +81,14 @@ class SimulationIoConnection:
     def _disconnect(self) -> None:
         """Disconnect from the SimulationIo API."""
         if not self._is_connected:
-            log(DEBUG, "Already disconnected")
             return
         channel: grpc.Channel = self._channel
         self._channel = None
         self._grpc_stub = None
         channel.close()
         log(DEBUG, "[SimulationIO] Disconnected")
+
+    @property
+    def _is_connected(self) -> bool:
+        """Return True if connected to SimulationIo, else False."""
+        return self._channel is not None
