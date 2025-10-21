@@ -56,11 +56,18 @@ from flwr.simulation.ray_transport.utils import (
 def _replace_keys(d: Any, match: str, target: str) -> Any:
     if isinstance(d, dict):
         return {
-            k.replace(match, target): _replace_keys(v, match, target)
+            k.replace(match, target): (
+                v
+                if not isinstance(v, (dict, list))
+                else _replace_keys(v, match, target)
+            )
             for k, v in d.items()
         }
     if isinstance(d, list):
-        return [_replace_keys(i, match, target) for i in d]
+        return [
+            v if not isinstance(v, (dict, list)) else _replace_keys(v, match, target)
+            for v in d
+        ]
     return d
 
 
