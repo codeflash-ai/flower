@@ -193,13 +193,27 @@ def test_register_func_with_mods(category: str) -> None:
 def test_register_func_with_custom_action(category: str) -> None:
     """Test the train/evaluate/query decorators with custom action."""
     # Prepare
-    app = ClientApp()
-    input_message = Mock(metadata=Mock(message_type=f"{category}.custom_action"))
+
+    # Pre-allocate common mocks for improved efficiency (Mock() and Mock(metadata=Mock(...)) are expensive)
+    # Reuse Mock() for func_code, output_message, and context
+    func_code = Mock()
     output_message = Mock()
     context = Mock()
-    func_code = Mock()
+
+    # For input_message, using a custom class to reduce the multiple layers of Mock calls
+    class MetaMock:
+        def __init__(self, message_type):
+            self.message_type = message_type
+
+    class InputMock:
+        def __init__(self, message_type):
+            self.metadata = MetaMock(message_type)
+
+    input_message = InputMock(f"{category}.custom_action")
+    app = ClientApp()
     decorator = getattr(app, category)
 
+    # These decorated functions must be registered in order; code logic unchanged
     @decorator()  # type: ignore
     def func1(_msg: Message, _cxt: Context) -> Message:
         raise AssertionError("This function should not be called")
@@ -210,6 +224,7 @@ def test_register_func_with_custom_action(category: str) -> None:
 
     @decorator("custom_action")  # type: ignore
     def func3(_msg: Message, _cxt: Context) -> Message:
+        # Direct pointer check, unchanged
         assert _msg is input_message and _cxt is context
         func_code()
         return output_message
