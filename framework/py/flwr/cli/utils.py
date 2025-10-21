@@ -134,22 +134,23 @@ def sanitize_project_name(name: str) -> str:
     # Replace whitespace with '_'
     name_with_hyphens = re.sub(r"[ ./_]", "-", name)
 
-    # Allowed characters in a module name: letters, digits, underscore
-    allowed_chars = set(
-        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-"
-    )
-
     # Make the string lowercase
     sanitized_name = name_with_hyphens.lower()
 
     # Remove any characters not allowed in Python module names
-    sanitized_name = "".join(c for c in sanitized_name if c in allowed_chars)
+    # Allowed characters in a module name: letters, digits, dash
+    sanitized_name = re.sub(r"[^a-z0-9-]", "", sanitized_name)
 
     # Ensure the first character is a letter or underscore
-    while sanitized_name and (
-        sanitized_name[0].isdigit() or sanitized_name[0] not in allowed_chars
+    # Optimize with slicing instead of repeated str[0] checks and slicing in a loop
+    i = 0
+    length = len(sanitized_name)
+    while i < length and (
+        sanitized_name[i].isdigit()
+        or not (("a" <= sanitized_name[i] <= "z") or sanitized_name[i] == "-")
     ):
-        sanitized_name = sanitized_name[1:]
+        i += 1
+    sanitized_name = sanitized_name[i:]
 
     return sanitized_name
 
