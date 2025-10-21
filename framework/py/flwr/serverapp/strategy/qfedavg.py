@@ -224,7 +224,11 @@ def get_local_weights(msg: Message) -> list[NDArray]:
 
 def l2_norm(ndarrays: list[NDArray]) -> float:
     """Compute the squared L2 norm of a list of numpy.ndarray."""
-    return float(sum(np.sum(np.square(g)) for g in ndarrays))
+    if len(ndarrays) == 0:
+        return 0.0
+    if len(ndarrays) == 1:
+        return float(np.sum(np.square(ndarrays[0])))
+    return float(np.sum(np.square(np.concatenate([g.ravel() for g in ndarrays]))))
 
 
 def compute_delta_and_h(
