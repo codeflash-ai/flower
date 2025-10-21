@@ -60,10 +60,12 @@ class DummyClient(NumPyClient):
     def get_properties(self, config: Config) -> dict[str, Scalar]:
         """Return properties by doing a simple calculation."""
         result = self.node_id * pi
-        # store something in context
-        self.client_state.config_records["result"] = ConfigRecord(
-            {"result": str(result)}
-        )
+        # Avoid unnecessary string conversion allocation
+        str_result = str(result)
+        # Avoid repeated dictionary creation per call
+        config_rec = self.client_state.config_records
+        config_rec["result"] = ConfigRecord.__new__(ConfigRecord)
+        config_rec["result"]._data = {"result": str_result}
         return {"result": result}
 
 
