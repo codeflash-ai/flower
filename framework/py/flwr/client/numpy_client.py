@@ -39,6 +39,8 @@ from flwr.common.typing import (
     Status,
 )
 
+_wrapper_cache = {}
+
 EXCEPTION_MESSAGE_WRONG_RETURN_TYPE_FIT = """
 NumPyClient.fit did not return a tuple with 3 elements.
 The returned values should have the following type signature:
@@ -173,7 +175,11 @@ class NumPyClient(ABC):
 
     def to_client(self) -> Client:
         """Convert to object to Client type and return it."""
-        return _wrap_numpy_client(client=self)
+        cls = type(self)
+        if cls not in _wrapper_cache:
+            wrapped = _wrap_numpy_client(client=self)
+            _wrapper_cache[cls] = type(wrapped)
+        return _wrapper_cache[cls](numpy_client=self)
 
 
 def has_get_properties(client: NumPyClient) -> bool:
