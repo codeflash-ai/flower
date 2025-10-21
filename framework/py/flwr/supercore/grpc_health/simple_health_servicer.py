@@ -21,6 +21,11 @@ import grpc
 from grpc_health.v1.health_pb2 import HealthCheckRequest, HealthCheckResponse
 from grpc_health.v1.health_pb2_grpc import HealthServicer
 
+# Pre-allocate the SERVING response to avoid repeated object creation.
+_SERVING_RESPONSE: HealthCheckResponse = HealthCheckResponse(
+    status=HealthCheckResponse.SERVING
+)
+
 # pylint: enable=E0611
 
 
@@ -31,7 +36,7 @@ class SimpleHealthServicer(HealthServicer):  # type: ignore
         self, request: HealthCheckRequest, context: grpc.ServicerContext
     ) -> HealthCheckResponse:
         """Return a HealthCheckResponse with SERVING status."""
-        return HealthCheckResponse(status=HealthCheckResponse.SERVING)
+        return _SERVING_RESPONSE
 
     def Watch(self, request: HealthCheckRequest, context: grpc.ServicerContext) -> None:
         """Watch the health status (not implemented)."""
