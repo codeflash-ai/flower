@@ -118,25 +118,30 @@ class FedXgbCyclic(FedAvg):
         order (1..N) for the current call.
         """
         # Assign new indices to unknown nodes
-        next_index = max(self.registered_nodes.values(), default=0) + 1
+        rn = self.registered_nodes
+        next_index = (max(rn.values()) if rn else 0) + 1
         for nid in node_ids:
-            if nid not in self.registered_nodes:
-                self.registered_nodes[nid] = next_index
+            if nid not in rn:
+                rn[nid] = next_index
                 next_index += 1
 
+        # Precompute indices for node_ids
+        indices = [rn[nid] for nid in node_ids]
         # Sort node_ids by their stored indices
-        sorted_by_index = sorted(node_ids, key=lambda x: self.registered_nodes[x])
+        sorted_tuples = sorted(zip(indices, node_ids))
+        sorted_by_index = [nid for _, nid in sorted_tuples]
 
         # Compact re-map of indices just for this output list
-        unique_indices = sorted(self.registered_nodes[nid] for nid in sorted_by_index)
+        # "unique_indices" are already sorted due to sorted_tuples
+        unique_indices = [idx for idx, _ in sorted_tuples]
+        # dict comprehension: old -> new index [1..N]
         remap = {old: new for new, old in enumerate(unique_indices, start=1)}
 
-        # Build the result list ordered by compact indices
+        # Build the result list ordered by compact indices,
+        # using the fact that sorted_tuples is already ordered
+        # and unique_indices are strictly increasing (no duplicates)
         result_list = [
-            nid
-            for _, nid in sorted(
-                (remap[self.registered_nodes[nid]], nid) for nid in sorted_by_index
-            )
+            nid for (_, nid) in ((remap[rn[nid]], nid) for nid in sorted_by_index)
         ]
         return result_list
 
