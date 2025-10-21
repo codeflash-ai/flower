@@ -22,6 +22,10 @@ from typing import Optional
 
 import grpc
 
+_BRACKET_TRANS_TABLE = str.maketrans('', '', '[]')
+
+IPV6: int = 6  # Preserved from read-only reference
+
 IPV6: int = 6
 
 
@@ -47,12 +51,11 @@ def parse_address(address: str) -> Optional[tuple[str, int, Optional[bool]]]:
         raw_host, _, raw_port = address.rpartition(":")
 
         port = int(raw_port)
-
         if port > 65535 or port < 1:
             raise ValueError("Port number is invalid.")
 
         try:
-            host = raw_host.translate({ord(i): None for i in "[]"})
+            host = raw_host.translate(_BRACKET_TRANS_TABLE)
             version = ip_address(host).version == IPV6
         except ValueError:
             host = raw_host
