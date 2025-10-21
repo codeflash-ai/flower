@@ -215,7 +215,31 @@ class ClientApp:
                 # Create and return an echo reply message
                 return Message(message.content, reply_to=message)
         """
-        return _get_decorator(self, MessageType.TRAIN, action, mods)
+        # Inlined _get_decorator logic for reduced call overhead and fewer closures in hot path.
+        # Most runtime in profile is in the train/_get_decorator dispatch layer.
+        if self._call:
+            raise _registration_error(MessageType.TRAIN)
+
+        # Precompute which mods to use for efficiency
+        joined_mods = self._mods + (mods if mods is not None else [])
+
+        def decorator(fn: ClientAppCallable) -> ClientAppCallable:
+            if not action.isidentifier():
+                raise ValueError(
+                    f"Cannot register {MessageType.TRAIN} function with name '{action}'. "
+                    "The name must follow Python's function naming rules."
+                )
+            full_name = f"{MessageType.TRAIN}.{action}"
+            if full_name in self._registered_funcs:
+                raise ValueError(
+                    f"Cannot register {MessageType.TRAIN} function with name '{action}'. "
+                    f"A {MessageType.TRAIN} function with the name '{action}' is already registered."
+                )
+            # Register provided function with the ClientApp object
+            self._registered_funcs[full_name] = make_ffn(fn, joined_mods)
+            return fn
+
+        return decorator
 
     def evaluate(
         self, action: str = DEFAULT_ACTION, *, mods: Optional[list[Mod]] = None
