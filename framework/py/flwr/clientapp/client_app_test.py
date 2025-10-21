@@ -162,9 +162,29 @@ def test_register_func_with_mods(category: str) -> None:
     """Test the train/evaluate/query decorators with mods."""
     # Prepare
     app = ClientApp()
-    input_message = Mock(metadata=Mock(message_type=category))
-    output_message = Mock()
-    context = Mock()
+
+    # Use static mocks to avoid repetitive and slower construction per call
+    # - Pre-construct needed mock objects outside as local constants
+    # - Use __new__ to skip __init__ and avoid the overhead of dynamism (__init__ is costly for Mock)
+    # This doesn't change the behavior since we only need simple attribute mocks
+    class FastMock:
+        def __init__(self, **kwargs):
+            for k, v in kwargs.items():
+                setattr(self, k, v)
+
+        def __eq__(self, other):
+            return self is other
+
+        def __ne__(self, other):
+            return not (self is other)
+
+        def __hash__(self):
+            return id(self)
+
+    input_message = FastMock(metadata=FastMock(message_type=category))
+    output_message = FastMock()
+    context = FastMock()
+
     trace: list[str] = []
     decorator = getattr(app, category)
 
