@@ -56,14 +56,17 @@ def prompt_text(
     default: Optional[str] = None,
 ) -> str:
     """Ask user to enter text input."""
+    styled_prompt = typer.style(f"\n💬 {text}", fg=typer.colors.MAGENTA, bold=True)
+    styled_error = typer.style("❌ Invalid entry", fg=typer.colors.RED, bold=True)
+
     while True:
         result = typer.prompt(
-            typer.style(f"\n💬 {text}", fg=typer.colors.MAGENTA, bold=True),
+            styled_prompt,
             default=default,
         )
         if predicate(result) and len(result) > 0:
             break
-        print(typer.style("❌ Invalid entry", fg=typer.colors.RED, bold=True))
+        print(styled_error)
 
     return cast(str, result)
 
