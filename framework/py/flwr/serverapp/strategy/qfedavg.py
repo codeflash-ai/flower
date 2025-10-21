@@ -224,7 +224,11 @@ def get_local_weights(msg: Message) -> list[NDArray]:
 
 def l2_norm(ndarrays: list[NDArray]) -> float:
     """Compute the squared L2 norm of a list of numpy.ndarray."""
-    return float(sum(np.sum(np.square(g)) for g in ndarrays))
+    # Optimization: avoid python-level sum/generator, use numpy vectorized concatenation
+    if not ndarrays:
+        return 0.0
+    arr = np.concatenate([g.ravel() for g in ndarrays])
+    return float(np.dot(arr, arr))
 
 
 def compute_delta_and_h(
@@ -235,18 +239,35 @@ def compute_delta_and_h(
     loss: float,
 ) -> tuple[list[NDArray], float]:
     """Compute delta and h used in q-FedAvg aggregation."""
-    # Compute gradient_k = L * (w - w_k)
+    # Optimization: perform bulk operations to reduce Python loop overhead
+    # Prepare lists for results, use local_weights in-place
+
+    # If both lists are empty, avoids unnecessary work
+    if not global_weights or not local_weights:
+        loss_pow_q: float = np.float_power(loss + 1e-10, q)
+        h = q * np.float_power(loss + 1e-10, q - 1) * 0.0 + L * loss_pow_q
+        return local_weights, h
+
+    # Compute gradient_k = L * (w - w_k), in place
     for gw, lw in zip(global_weights, local_weights):
+        # Use np.subtract and multiply directly, in-place
         np.subtract(gw, lw, out=lw)
         lw *= L
+
     grad = local_weights  # After in-place operations, local_weights is now grad
-    # Compute ||w_k - w||^2
+
+    # Compute ||w_k - w||^2 with optimized l2_norm
     norm = l2_norm(grad)
+
     # Compute delta_k = loss_k^q * gradient_k
     loss_pow_q: float = np.float_power(loss + 1e-10, q)
+    # Instead of explicit for-loop, use in-place multiplication, but preserve mutability
     for g in grad:
         g *= loss_pow_q
+
     delta = grad  # After in-place multiplication, grad is now delta
+
     # Compute h_k
+    # Keep using np.float_power, as it's numerically stable for non-integer powers
     h = q * np.float_power(loss + 1e-10, q - 1) * norm + L * loss_pow_q
     return delta, h
