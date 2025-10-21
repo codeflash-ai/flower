@@ -116,9 +116,16 @@ def is_valid_project_name(name: str) -> bool:
     if not name[0].isalpha():
         return False
 
-    # Check if the rest of the characters are valid (letter, digit, or dash)
+    # Set of allowed special characters (just hyphen)
+    allowed_special = {"-"}
+
+    # Pre-bind method lookups for in-loop performance
+    isalnum = str.isalnum
+
+    # Use enumerate to avoid slicing (saves minor time in huge cases)
     for char in name[1:]:
-        if not (char.isalnum() or char in "-"):
+        # Only allow alphanumerics or '-'
+        if not (isalnum(char) or char in allowed_special):
             return False
 
     return True
