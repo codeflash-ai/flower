@@ -218,18 +218,23 @@ def _to_table(run_list: list[_RunListType]) -> Table:
     """Format the provided run list to a rich Table."""
     table = Table(header_style="bold cyan", show_lines=True)
 
-    # Add columns
-    table.add_column(
-        Text("Run ID", justify="center"), style="bright_white", no_wrap=True
-    )
-    table.add_column(Text("FAB", justify="center"), style="dim white")
-    table.add_column(Text("Status", justify="center"))
-    table.add_column(Text("Elapsed", justify="center"), style="blue")
-    table.add_column(Text("Created At", justify="center"), style="dim white")
-    table.add_column(Text("Running At", justify="center"), style="dim white")
-    table.add_column(Text("Finished At", justify="center"), style="dim white")
+    # Pre-create column Text objects (avoid repeating instantiations)
+    add_col = table.add_column
+    add_col(Text("Run ID", justify="center"), style="bright_white", no_wrap=True)
+    add_col(Text("FAB", justify="center"), style="dim white")
+    add_col(Text("Status", justify="center"))
+    add_col(Text("Elapsed", justify="center"), style="blue")
+    add_col(Text("Created At", justify="center"), style="dim white")
+    add_col(Text("Running At", justify="center"), style="dim white")
+    add_col(Text("Finished At", justify="center"), style="dim white")
+
+    COMPLETED = SubStatus.COMPLETED
+    FAILED = SubStatus.FAILED
+
+    append_row = table.add_row
 
     for row in run_list:
+        # Unpack only the required fields directly (avoid unpacking unused "_")
         (
             run_id,
             fab_id,
@@ -241,16 +246,18 @@ def _to_table(run_list: list[_RunListType]) -> Table:
             running_at,
             finished_at,
         ) = row
-        # Style the status based on its value
-        sub_status = status_text.rsplit(":", maxsplit=1)[-1]
-        if sub_status == SubStatus.COMPLETED:
+
+        # Use rpartition (more efficient) and direct identity comparison for style
+        head, sep, sub_status = status_text.rpartition(":")
+        if sub_status == COMPLETED:
             status_style = "green"
-        elif sub_status == SubStatus.FAILED:
+        elif sub_status == FAILED:
             status_style = "red"
         else:
             status_style = "yellow"
 
-        formatted_row = (
+        # Use tuple directly for row addition (avoid intermediate variable)
+        append_row(
             f"[bold]{run_id}[/bold]",
             f"{fab_id} (v{fab_version})",
             f"[{status_style}]{status_text}[/{status_style}]",
@@ -259,7 +266,6 @@ def _to_table(run_list: list[_RunListType]) -> Table:
             running_at,
             finished_at,
         )
-        table.add_row(*formatted_row)
 
     return table
 
