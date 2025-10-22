@@ -70,15 +70,17 @@ class DummyLogPlugin(EventLogWriterPlugin):
         response: Optional[Union[GrpcMessage, BaseException]],
     ) -> LogEntry:
         """Compose post-event log entry from the provided response and context."""
+        actor_id = None
+        description = None
+        if account_info is not None:
+            actor_id = account_info.flwr_aid
+            description = account_info.account_name
+
         return LogEntry(
-            timestamp="after_timestamp",
-            actor=Actor(
-                actor_id=account_info.flwr_aid if account_info else None,
-                description=account_info.account_name if account_info else None,
-                ip_address="5.6.7.8",
-            ),
-            event=Event(action=method_name, run_id=None, fab_hash=None),
-            status="after",
+            "after_timestamp",
+            Actor(actor_id, description, "5.6.7.8"),
+            Event(method_name, None, None),
+            "after",
         )
 
     def write_log(self, log_entry: LogEntry) -> None:
