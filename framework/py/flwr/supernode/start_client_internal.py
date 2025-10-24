@@ -528,16 +528,16 @@ def run_clientappio_api_grpc(
     certificates: Optional[tuple[bytes, bytes, bytes]],
 ) -> grpc.Server:
     """Run ClientAppIo API gRPC server."""
+    # Direct assignment for function reference, eliminates an extra indirection
     clientappio_servicer: grpc.Server = ClientAppIoServicer(
         state_factory=state_factory,
         ffs_factory=ffs_factory,
         objectstore_factory=objectstore_factory,
     )
-    clientappio_add_servicer_to_server_fn = add_ClientAppIoServicer_to_server
     clientappio_grpc_server = generic_create_grpc_server(
         servicer_and_add_fn=(
             clientappio_servicer,
-            clientappio_add_servicer_to_server_fn,
+            add_ClientAppIoServicer_to_server,
         ),
         server_address=address,
         max_message_length=GRPC_MAX_MESSAGE_LENGTH,

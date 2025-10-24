@@ -27,6 +27,11 @@ import grpc
 from .address import is_port_in_use
 from .logger import log
 
+_GRPC_BASE_OPTIONS = (
+    ("grpc.http2.max_pings_without_data", 0),
+    ("grpc.keepalive_permit_without_calls", 0),
+)
+
 GRPC_MAX_MESSAGE_LENGTH: int = 2_147_483_647  # == 2048 * 1024 * 1024 -1 (2GB)
 
 INVALID_CERTIFICATES_ERR_MSG = """
@@ -166,32 +171,13 @@ def generic_create_grpc_server(  # pylint: disable=too-many-arguments, R0914, R0
     # Deconstruct tuple into servicer and function
     servicer, add_servicer_to_server_fn = servicer_and_add_fn
 
-    # Possible options:
-    # https://github.com/grpc/grpc/blob/v1.43.x/include/grpc/impl/codegen/grpc_types.h
-    options = [
-        # Maximum number of concurrent incoming streams to allow on a http2
-        # connection. Int valued.
+    # Compose options tuple, ensure minimal allocations per call
+    options = (
         ("grpc.max_concurrent_streams", max(100, max_concurrent_workers)),
-        # Maximum message length that the channel can send.
-        # Int valued, bytes. -1 means unlimited.
         ("grpc.max_send_message_length", max_message_length),
-        # Maximum message length that the channel can receive.
-        # Int valued, bytes. -1 means unlimited.
         ("grpc.max_receive_message_length", max_message_length),
-        # The gRPC default for this setting is 7200000 (2 hours). Flower uses a
-        # customized default of 210000 (3 minutes and 30 seconds) to improve
-        # compatibility with popular cloud providers. Mobile Flower clients may
-        # choose to increase this value if their server environment allows
-        # long-running idle TCP connections.
         ("grpc.keepalive_time_ms", keepalive_time_ms),
-        # Setting this to zero will allow sending unlimited keepalive pings in between
-        # sending actual data frames.
-        ("grpc.http2.max_pings_without_data", 0),
-        # Is it permissible to send keepalive pings from the client without
-        # any outstanding streams. More explanation here:
-        # https://github.com/adap/flower/pull/2197
-        ("grpc.keepalive_permit_without_calls", 0),
-    ]
+    ) + _GRPC_BASE_OPTIONS
 
     server = grpc.server(
         concurrent.futures.ThreadPoolExecutor(max_workers=max_concurrent_workers),

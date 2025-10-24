@@ -6,6 +6,79 @@ from flwr.proto import appio_pb2 as flwr_dot_proto_dot_appio__pb2
 from flwr.proto import message_pb2 as flwr_dot_proto_dot_message__pb2
 from flwr.proto import run_pb2 as flwr_dot_proto_dot_run__pb2
 
+_LIST_APPS_HANDLER = grpc.unary_unary_rpc_method_handler(
+        lambda self, request, context: self.ListAppsToLaunch(request, context),
+        request_deserializer=flwr_dot_proto_dot_appio__pb2.ListAppsToLaunchRequest.FromString,
+        response_serializer=flwr_dot_proto_dot_appio__pb2.ListAppsToLaunchResponse.SerializeToString,
+)
+
+_REQUEST_TOKEN_HANDLER = grpc.unary_unary_rpc_method_handler(
+        lambda self, request, context: self.RequestToken(request, context),
+        request_deserializer=flwr_dot_proto_dot_appio__pb2.RequestTokenRequest.FromString,
+        response_serializer=flwr_dot_proto_dot_appio__pb2.RequestTokenResponse.SerializeToString,
+)
+
+_GET_RUN_HANDLER = grpc.unary_unary_rpc_method_handler(
+        lambda self, request, context: self.GetRun(request, context),
+        request_deserializer=flwr_dot_proto_dot_run__pb2.GetRunRequest.FromString,
+        response_serializer=flwr_dot_proto_dot_run__pb2.GetRunResponse.SerializeToString,
+)
+
+_PULL_CLIENTAPP_INPUTS_HANDLER = grpc.unary_unary_rpc_method_handler(
+        lambda self, request, context: self.PullClientAppInputs(request, context),
+        request_deserializer=flwr_dot_proto_dot_appio__pb2.PullAppInputsRequest.FromString,
+        response_serializer=flwr_dot_proto_dot_appio__pb2.PullAppInputsResponse.SerializeToString,
+)
+
+_PUSH_CLIENTAPP_OUTPUTS_HANDLER = grpc.unary_unary_rpc_method_handler(
+        lambda self, request, context: self.PushClientAppOutputs(request, context),
+        request_deserializer=flwr_dot_proto_dot_appio__pb2.PushAppOutputsRequest.FromString,
+        response_serializer=flwr_dot_proto_dot_appio__pb2.PushAppOutputsResponse.SerializeToString,
+)
+
+_PUSH_MESSAGE_HANDLER = grpc.unary_unary_rpc_method_handler(
+        lambda self, request, context: self.PushMessage(request, context),
+        request_deserializer=flwr_dot_proto_dot_appio__pb2.PushAppMessagesRequest.FromString,
+        response_serializer=flwr_dot_proto_dot_appio__pb2.PushAppMessagesResponse.SerializeToString,
+)
+
+_PULL_MESSAGE_HANDLER = grpc.unary_unary_rpc_method_handler(
+        lambda self, request, context: self.PullMessage(request, context),
+        request_deserializer=flwr_dot_proto_dot_appio__pb2.PullAppMessagesRequest.FromString,
+        response_serializer=flwr_dot_proto_dot_appio__pb2.PullAppMessagesResponse.SerializeToString,
+)
+
+_PUSH_OBJECT_HANDLER = grpc.unary_unary_rpc_method_handler(
+        lambda self, request, context: self.PushObject(request, context),
+        request_deserializer=flwr_dot_proto_dot_message__pb2.PushObjectRequest.FromString,
+        response_serializer=flwr_dot_proto_dot_message__pb2.PushObjectResponse.SerializeToString,
+)
+
+_PULL_OBJECT_HANDLER = grpc.unary_unary_rpc_method_handler(
+        lambda self, request, context: self.PullObject(request, context),
+        request_deserializer=flwr_dot_proto_dot_message__pb2.PullObjectRequest.FromString,
+        response_serializer=flwr_dot_proto_dot_message__pb2.PullObjectResponse.SerializeToString,
+)
+
+_CONFIRM_MESSAGE_RECEIVED_HANDLER = grpc.unary_unary_rpc_method_handler(
+        lambda self, request, context: self.ConfirmMessageReceived(request, context),
+        request_deserializer=flwr_dot_proto_dot_message__pb2.ConfirmMessageReceivedRequest.FromString,
+        response_serializer=flwr_dot_proto_dot_message__pb2.ConfirmMessageReceivedResponse.SerializeToString,
+)
+
+_RPC_METHOD_HANDLERS = {
+    'ListAppsToLaunch': _LIST_APPS_HANDLER,
+    'RequestToken': _REQUEST_TOKEN_HANDLER,
+    'GetRun': _GET_RUN_HANDLER,
+    'PullClientAppInputs': _PULL_CLIENTAPP_INPUTS_HANDLER,
+    'PushClientAppOutputs': _PUSH_CLIENTAPP_OUTPUTS_HANDLER,
+    'PushMessage': _PUSH_MESSAGE_HANDLER,
+    'PullMessage': _PULL_MESSAGE_HANDLER,
+    'PushObject': _PUSH_OBJECT_HANDLER,
+    'PullObject': _PULL_OBJECT_HANDLER,
+    'ConfirmMessageReceived': _CONFIRM_MESSAGE_RECEIVED_HANDLER,
+}
+
 
 class ClientAppIoStub(object):
     """Missing associated documentation comment in .proto file."""
