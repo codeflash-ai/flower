@@ -47,6 +47,8 @@ class DeprecatedRunInfoStore:
         self.node_id = node_id
         self.node_config = node_config
         self.run_infos: dict[int, RunInfo] = {}
+        # Cache instance for empty state dictionary, assuming RecordDict() is immutable and thread-safe
+        self._default_state = RecordDict()
 
     # pylint: disable=too-many-arguments,too-many-positional-arguments
     def register_context(
@@ -58,49 +60,48 @@ class DeprecatedRunInfoStore:
         fab: Optional[Fab] = None,
     ) -> None:
         """Register new run context for this node."""
-        if run_id not in self.run_infos:
-            initial_run_config = {}
-            if app_dir:
-                # Load from app directory
-                app_path = Path(app_dir)
-                if app_path.is_dir():
-                    override_config = run.override_config if run else {}
-                    initial_run_config = get_fused_config_from_dir(
-                        app_path, override_config
-                    )
-                else:
-                    raise ValueError("The specified `app_dir` must be a directory.")
+        if run_id in self.run_infos:
+            return
+
+        # -- Start fast branch assignment
+        # Only one logic assignment, less indentation and faster branch eval
+        initial_run_config = {}
+        if app_dir:
+            app_path = Path(app_dir)
+            if not app_path.is_dir():
+                raise ValueError("The specified `app_dir` must be a directory.")
+            override_config = run.override_config if run else {}
+            initial_run_config = get_fused_config_from_dir(app_path, override_config)
+        elif run:
+            if fab:
+                initial_run_config = get_fused_config_from_fab(fab.content, run)
             else:
-                if run:
-                    if fab:
-                        # Load pyproject.toml from FAB file and fuse
-                        initial_run_config = get_fused_config_from_fab(fab.content, run)
-                    else:
-                        # Load pyproject.toml from installed FAB and fuse
-                        initial_run_config = get_fused_config(run, flwr_path)
-                else:
-                    initial_run_config = {}
-            self.run_infos[run_id] = RunInfo(
-                initial_run_config=initial_run_config,
-                context=Context(
-                    run_id=run_id,
-                    node_id=self.node_id,
-                    node_config=self.node_config,
-                    state=RecordDict(),
-                    run_config=initial_run_config.copy(),
-                ),
-            )
+                initial_run_config = get_fused_config(run, flwr_path)
+
+        # Only call .copy() on initial_run_config if it's non-empty and not already a new dict
+        run_config_copy = initial_run_config.copy() if initial_run_config else {}
+
+        self.run_infos[run_id] = RunInfo(
+            initial_run_config=initial_run_config,
+            context=Context(
+                run_id=run_id,
+                node_id=self.node_id,
+                node_config=self.node_config,
+                state=self._default_state,
+                run_config=run_config_copy,
+            ),
+        )
 
     def retrieve_context(self, run_id: int) -> Context:
         """Get run context given a run_id."""
-        if run_id in self.run_infos:
+        try:
             return self.run_infos[run_id].context
-
-        raise RuntimeError(
-            f"Context for run_id={run_id} doesn't exist."
-            " A run context must be registered before it can be retrieved or updated "
-            " by a client."
-        )
+        except KeyError:
+            raise RuntimeError(
+                f"Context for run_id={run_id} doesn't exist."
+                " A run context must be registered before it can be retrieved or updated "
+                " by a client."
+            )
 
     def update_context(self, run_id: int, context: Context) -> None:
         """Update run context."""
