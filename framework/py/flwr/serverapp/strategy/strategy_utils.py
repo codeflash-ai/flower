@@ -260,12 +260,20 @@ def aggregate_bagging(
     if bst_prev_org == b"":
         return bst_curr_org
 
-    # Get the tree numbers
-    tree_num_prev, _ = _get_tree_nums(bst_prev_org)
-    _, paral_tree_num_curr = _get_tree_nums(bst_curr_org)
-
     bst_prev = json.loads(bytearray(bst_prev_org))
     bst_curr = json.loads(bytearray(bst_curr_org))
+
+    # Get the tree numbers directly from parsed models
+    tree_num_prev = int(
+        bst_prev["learner"]["gradient_booster"]["model"]["gbtree_model_param"][
+            "num_trees"
+        ]
+    )
+    paral_tree_num_curr = int(
+        bst_curr["learner"]["gradient_booster"]["model"]["gbtree_model_param"][
+            "num_parallel_tree"
+        ]
+    )
 
     previous_model = bst_prev["learner"]["gradient_booster"]["model"]
     previous_model["gbtree_model_param"]["num_trees"] = str(
