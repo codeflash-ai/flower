@@ -84,19 +84,22 @@ class ControlAccountAuthInterceptor(grpc.ServerInterceptor):  # type: ignore
     def _generic_auth_unary_method_handler(
         self, method_handler: grpc.RpcMethodHandler
     ) -> grpc.RpcMethodHandler:
+        # Locally cache repeated lookups for miniscule performance gain (method_handler fields used multiple times)
+        unary_unary = method_handler.unary_unary
+        unary_stream = method_handler.unary_stream
+
         def _generic_method_handler(
-            request: Request,
+            request,  # type: ignore
             context: grpc.ServicerContext,
-        ) -> Response:
-            call = method_handler.unary_unary or method_handler.unary_stream
+        ):
+            call = unary_unary or unary_stream
             metadata = context.invocation_metadata()
 
-            # Intercept GetLoginDetails and GetAuthTokens requests, and return
-            # the response without authentication
+            # Fast path: short-circuit for token-issuing RPCs
             if isinstance(request, (GetLoginDetailsRequest, GetAuthTokensRequest)):
                 return call(request, context)  # type: ignore
 
-            # For other requests, check if the account is authenticated
+            # Authn fast path
             valid_tokens, account_info = self.authn_plugin.validate_tokens_in_metadata(
                 metadata
             )
@@ -107,9 +110,7 @@ class ControlAccountAuthInterceptor(grpc.ServerInterceptor):  # type: ignore
                         "Tokens validated, but account info not found",
                     )
                     raise grpc.RpcError()
-                # Store account info in contextvars for authenticated accounts
                 shared_account_info.set(account_info)
-                # Check if the account is authorized
                 if not self.authz_plugin.authorize(account_info):
                     context.abort(
                         grpc.StatusCode.PERMISSION_DENIED,
@@ -119,7 +120,7 @@ class ControlAccountAuthInterceptor(grpc.ServerInterceptor):  # type: ignore
                     raise grpc.RpcError()
                 return call(request, context)  # type: ignore
 
-            # If the account is not authenticated, refresh tokens
+            # Authn fallback: refresh and repeat
             tokens, account_info = self.authn_plugin.refresh_tokens(metadata)
             if tokens is not None:
                 if account_info is None:
@@ -128,9 +129,7 @@ class ControlAccountAuthInterceptor(grpc.ServerInterceptor):  # type: ignore
                         "Tokens refreshed, but account info not found",
                     )
                     raise grpc.RpcError()
-                # Store account info in contextvars for authenticated accounts
                 shared_account_info.set(account_info)
-                # Check if the account is authorized
                 if not self.authz_plugin.authorize(account_info):
                     context.abort(
                         grpc.StatusCode.PERMISSION_DENIED,
@@ -145,7 +144,8 @@ class ControlAccountAuthInterceptor(grpc.ServerInterceptor):  # type: ignore
             context.abort(grpc.StatusCode.UNAUTHENTICATED, "Access denied")
             raise grpc.RpcError()  # This line is unreachable
 
-        if method_handler.unary_unary:
+        # Avoid attribute lookup on every call
+        if unary_unary:
             message_handler = grpc.unary_unary_rpc_method_handler
         else:
             message_handler = grpc.unary_stream_rpc_method_handler
