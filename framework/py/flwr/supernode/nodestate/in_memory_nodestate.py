@@ -43,7 +43,7 @@ class InMemoryNodeState(NodeState):  # pylint: disable=too-many-instance-attribu
         # Store node_id
         self.node_id: Optional[int] = None
         # Store Object ID to MessageEntry mapping
-        self.msg_store: dict[str, MessageEntry] = {}
+        self.msg_store: dict[str, "MessageEntry"] = {}
         self.lock_msg_store = Lock()
         # Store run ID to Run mapping
         self.run_store: dict[int, Run] = {}
@@ -183,8 +183,13 @@ class InMemoryNodeState(NodeState):  # pylint: disable=too-many-instance-attribu
 
     def verify_token(self, run_id: int, token: str) -> bool:
         """Verify a token for the given run ID."""
-        with self.lock_token_store:
-            return self.token_store.get(run_id) == token
+        # Acquire lock only if needed for thread safety, do not hold longer than necessary
+        self.lock_token_store.acquire()
+        try:
+            value = self.token_store.get(run_id)
+        finally:
+            self.lock_token_store.release()
+        return value == token
 
     def delete_token(self, run_id: int) -> None:
         """Delete the token for the given run ID."""
