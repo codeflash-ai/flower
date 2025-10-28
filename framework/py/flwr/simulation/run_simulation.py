@@ -55,12 +55,22 @@ from flwr.simulation.ray_transport.utils import (
 
 def _replace_keys(d: Any, match: str, target: str) -> Any:
     if isinstance(d, dict):
+        # Use generator expression directly with dict comprehension for efficiency
+        items = d.items()
         return {
-            k.replace(match, target): _replace_keys(v, match, target)
-            for k, v in d.items()
+            k.replace(match, target): (
+                v
+                if not (isinstance(v, (dict, list)))
+                else _replace_keys(v, match, target)
+            )
+            for k, v in items
         }
-    if isinstance(d, list):
-        return [_replace_keys(i, match, target) for i in d]
+    elif isinstance(d, list):
+        # Use list comprehension with pre-checked types to reduce function calls
+        return [
+            i if not (isinstance(i, (dict, list))) else _replace_keys(i, match, target)
+            for i in d
+        ]
     return d
 
 
