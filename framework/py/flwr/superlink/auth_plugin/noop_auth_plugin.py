@@ -29,6 +29,14 @@ from flwr.common.typing import (
 
 from .auth_plugin import ControlAuthnPlugin, ControlAuthzPlugin
 
+_NOOP_LOGIN_DETAILS = AccountAuthLoginDetails(
+    authn_type=AuthnType.NOOP,  # No operation authn type
+    device_code="",
+    verification_uri_complete="",
+    expires_in=0,
+    interval=0,
+)
+
 NOOP_ACCOUNT_INFO = AccountInfo(
     flwr_aid=NOOP_FLWR_AID,
     account_name=NOOP_ACCOUNT_NAME,
@@ -49,13 +57,7 @@ class NoOpControlAuthnPlugin(ControlAuthnPlugin):
         """Get the login details."""
         # This allows the `flwr login` command to load the NoOp plugin accordingly,
         # which then raises a LoginError when attempting to login.
-        return AccountAuthLoginDetails(
-            authn_type=AuthnType.NOOP,  # No operation authn type
-            device_code="",
-            verification_uri_complete="",
-            expires_in=0,
-            interval=0,
-        )
+        return _NOOP_LOGIN_DETAILS
 
     def validate_tokens_in_metadata(
         self, metadata: Sequence[tuple[str, Union[str, bytes]]]
