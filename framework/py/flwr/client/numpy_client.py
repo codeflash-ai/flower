@@ -38,6 +38,11 @@ from flwr.common.typing import (
     GetPropertiesRes,
     Status,
 )
+import threading
+
+_numpy_wrapper_class_cache = {}
+
+_numpy_wrapper_cache_lock = threading.Lock()
 
 EXCEPTION_MESSAGE_WRONG_RETURN_TYPE_FIT = """
 NumPyClient.fit did not return a tuple with 3 elements.
@@ -173,7 +178,23 @@ class NumPyClient(ABC):
 
     def to_client(self) -> Client:
         """Convert to object to Client type and return it."""
-        return _wrap_numpy_client(client=self)
+        client_type = type(self)
+        # Minimize global and threading overhead for the common path
+        try:
+            wrapper_class = _numpy_wrapper_class_cache[client_type]
+        except KeyError:
+            with _numpy_wrapper_cache_lock:
+                # Double-check under lock in case it was filled in the meantime
+                wrapper_class = _numpy_wrapper_class_cache.get(client_type)
+                if wrapper_class is None:
+                    # Use local import to avoid circular import cost if not always used
+                    # and only import when needed (plus _wrap_numpy_client does the heavy lifting)
+                    from flwr.client.numpy_client import _wrap_numpy_client
+
+                    wrapper_instance = _wrap_numpy_client(client=self)
+                    wrapper_class = type(wrapper_instance)
+                    _numpy_wrapper_class_cache[client_type] = wrapper_class
+        return wrapper_class(numpy_client=self)
 
 
 def has_get_properties(client: NumPyClient) -> bool:
