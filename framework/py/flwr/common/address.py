@@ -52,7 +52,7 @@ def parse_address(address: str) -> Optional[tuple[str, int, Optional[bool]]]:
             raise ValueError("Port number is invalid.")
 
         try:
-            host = raw_host.translate({ord(i): None for i in "[]"})
+            host = raw_host.strip("[]")
             version = ip_address(host).version == IPV6
         except ValueError:
             host = raw_host
