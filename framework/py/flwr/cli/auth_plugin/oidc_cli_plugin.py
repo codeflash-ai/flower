@@ -119,6 +119,12 @@ class OidcCliPlugin(CliAuthPlugin):
             )
             raise typer.Exit(code=1)
 
+        if isinstance(metadata, list):
+            return metadata + [
+                (ACCESS_TOKEN_KEY, self.access_token),
+                (REFRESH_TOKEN_KEY, self.refresh_token),
+            ]
+
         return list(metadata) + [
             (ACCESS_TOKEN_KEY, self.access_token),
             (REFRESH_TOKEN_KEY, self.refresh_token),
