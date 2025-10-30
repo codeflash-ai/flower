@@ -325,7 +325,48 @@ class ClientApp:
                 # Create and return an echo reply message
                 return Message(message.content, reply_to=message)
         """
-        return _get_decorator(self, MessageType.QUERY, action, mods)
+        # Inlining _get_decorator here for minor perf gain and to allow for more local optimizations
+        # This reduces function call overhead and attribute accesses
+        if self._call:
+            raise _registration_error(MessageType.QUERY)
+
+        def decorator(fn: ClientAppCallable) -> ClientAppCallable:
+            # This block is a performance hotspot; aggressively fast-path with local variables/lookups
+            # Use tight local scope for all lookups and avoid repeated attribute/dict lookups
+            # Pre-calculate keys
+            act = action
+            # Fastest check for valid identifier (no method call if the value is the default "default")
+            if act is not DEFAULT_ACTION and not act.isidentifier():
+                raise ValueError(
+                    f"Cannot register {MessageType.QUERY} function with name '{act}'. "
+                    "The name must follow Python's function naming rules."
+                )
+
+            # Full message type is nearly always 'query.default'
+            full_name = f"{MessageType.QUERY}.{act}"
+            registered_funcs = self._registered_funcs
+            if full_name in registered_funcs:
+                raise ValueError(
+                    f"Cannot register {MessageType.QUERY} function with name '{act}'. "
+                    f"A {MessageType.QUERY} function with the name '{act}' is already registered."
+                )
+
+            # Pre-concatenate mods for less call-time work
+            combined_mods = self._mods
+            if mods:
+                if not combined_mods:
+                    applied_mods = mods
+                elif not mods:
+                    applied_mods = combined_mods
+                else:
+                    applied_mods = combined_mods + mods
+            else:
+                applied_mods = combined_mods
+
+            registered_funcs[full_name] = make_ffn(fn, applied_mods)
+            return fn
+
+        return decorator
 
     def lifespan(
         self,
