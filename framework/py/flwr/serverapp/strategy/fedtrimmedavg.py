@@ -168,9 +168,11 @@ def trim_mean(array: NDArray, cut_fraction: float) -> NDArray:
     if lowercut > uppercut:
         raise ValueError("Fraction too big.")
 
+    if lowercut == 0:
+        result: NDArray = np.mean(array, axis=axis)
+        return result
+
     atmp = np.partition(array, (lowercut, uppercut - 1), axis)
 
-    slice_list = [slice(None)] * atmp.ndim
-    slice_list[axis] = slice(lowercut, uppercut)
-    result: NDArray = np.mean(atmp[tuple(slice_list)], axis=axis)
+    result: NDArray = np.mean(atmp[lowercut:uppercut], axis=axis)
     return result
