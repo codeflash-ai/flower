@@ -118,22 +118,23 @@ class ClientApp:
         # Create wrapper function for `handle`
         self._call: Optional[ClientAppCallable] = None
         if client_fn is not None:
+            # Adapt signature only once
+            adapted_client_fn = _inspect_maybe_adapt_client_fn_signature(client_fn)
 
-            client_fn = _inspect_maybe_adapt_client_fn_signature(client_fn)
-
+            # Use direct reference here for clarity, reduce lookups in closure
             def ffn(
                 message: Message,
                 context: Context,
             ) -> Message:  # pylint: disable=invalid-name
-                out_message = handle_legacy_message_from_msgtype(
-                    client_fn=client_fn, message=message, context=context
+                # Directly return to avoid extra local variable
+                return handle_legacy_message_from_msgtype(
+                    client_fn=adapted_client_fn, message=message, context=context
                 )
-                return out_message
 
-            # Wrap mods around the wrapped handle function
-            self._call = make_ffn(ffn, mods if mods is not None else [])
+            # Wrap mods around the handle function, avoid list duplication with self._mods
+            self._call = make_ffn(ffn, self._mods)
 
-        # Lifespan function
+        # Lifespan function, always set once up front
         self._lifespan = _empty_lifespan
 
     def __call__(self, message: Message, context: Context) -> Message:
@@ -361,33 +362,26 @@ class ClientApp:
 
             @contextmanager
             def decorated_lifespan(context: Context) -> Iterator[None]:
-                # Execute the code before `yield` in lifespan_fn
+                it = lifespan_fn(context)
+                # Fast path check with next()
                 try:
-                    if not isinstance(it := lifespan_fn(context), Iterator):
-                        raise StopIteration
                     next(it)
                 except StopIteration:
                     raise RuntimeError(
                         "lifespan function should yield at least once."
                     ) from None
-
                 try:
-                    # Enter the context
                     yield
                 finally:
                     try:
-                        # Execute the code after `yield` in lifespan_fn
                         next(it)
                     except StopIteration:
                         pass
                     else:
                         raise RuntimeError("lifespan function should only yield once.")
 
-            # Register provided function with the ClientApp object
-            # Ignore mypy error because of different argument names (`_` vs `context`)
             self._lifespan = decorated_lifespan  # type: ignore
 
-            # Return provided function unmodified
             return lifespan_fn
 
         return lifespan_decorator
