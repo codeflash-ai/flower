@@ -80,6 +80,10 @@ from flwr.superlink.auth_plugin import ControlAuthnPlugin
 
 from .control_account_auth_interceptor import shared_account_info
 
+_ABORT_STATUS = grpc.StatusCode.PERMISSION_DENIED
+
+_ABORT_MESSAGE = "️⛔️ Failed to fetch the account information."
+
 
 class ControlServicer(control_pb2_grpc.ControlServicer):
     """Control API servicer."""
@@ -560,10 +564,7 @@ def _check_flwr_aid_exists(
 ) -> str:
     """Guard clause to check if `flwr_aid` exists."""
     if flwr_aid is None:
-        context.abort(
-            grpc.StatusCode.PERMISSION_DENIED,
-            "️⛔️ Failed to fetch the account information.",
-        )
+        context.abort(_ABORT_STATUS, _ABORT_MESSAGE)
         raise RuntimeError  # This line is unreachable
     return flwr_aid
 
