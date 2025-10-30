@@ -193,11 +193,36 @@ def test_register_func_with_mods(category: str) -> None:
 def test_register_func_with_custom_action(category: str) -> None:
     """Test the train/evaluate/query decorators with custom action."""
     # Prepare
+
+    # NOTE: Direct instantiation of Mock() objects is slow, especially with attribute setting.
+    # Instead, prepare lightweight objects for faster test setup.
     app = ClientApp()
-    input_message = Mock(metadata=Mock(message_type=f"{category}.custom_action"))
+
+    # Inline subclass to avoid Mock's overhead for known field(s)
+    class Meta:
+        __slots__ = ("message_type",)
+
+        def __init__(self, message_type):
+            self.message_type = message_type
+
+    class MessageObj:
+        __slots__ = ("metadata",)
+
+        def __init__(self, metadata):
+            self.metadata = metadata
+
+    input_message_type = f"{category}.custom_action"
+    input_message = MessageObj(Meta(input_message_type))
+
+    # Use Mock for output_message to support assert_actual_ret is output_message,
+    # but only use a single shared Mock instance.
     output_message = Mock()
-    context = Mock()
+
+    # Make a minimal context object: use object() since it is only checked for identity in func3
+    context = object()
+    # For func_code, need to support `.assert_called_once()` and callability: use Mock.
     func_code = Mock()
+
     decorator = getattr(app, category)
 
     @decorator()  # type: ignore
